@@ -1,7 +1,7 @@
 import os
 
-from flask import Flask, request, Response
-from twilio.twiml.voice_response import VoiceResponse, Connect
+from flask import Flask, Response
+from twilio.twiml.voice_response import VoiceResponse
 from twilio.rest import Client
 
 _TWILIO_PHONE_NUMBER = "+18336411266"
@@ -21,7 +21,7 @@ def voice():
         print("Voice endpoint hit")
         response = VoiceResponse()
         connect = response.connect()
-        connect.stream(url="wss://dc3c-73-162-172-228.ngrok-free.app")
+        connect.stream(url="wss://d541-73-162-172-228.ngrok-free.app")
 
         return Response(str(response), mimetype="application/xml")
     except Exception as e:

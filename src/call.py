@@ -10,7 +10,7 @@ client = Client(account_sid, auth_token)
 
 def call():
     client.calls.create(
-        url="https://b0c0-73-162-172-228.ngrok-free.app/voice",  # Replace with your server's public URL
+        url="https://cd69-73-162-172-228.ngrok-free.app/voice",  # Replace with your server's public URL
         to="+13179184060",
         from_=_TWILIO_PHONE_NUMBER,
     )

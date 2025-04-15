@@ -4,7 +4,6 @@ import re
 import openai
 import os
 
-import test_prompts
 
 # Load your OpenAI API key from environment variable
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -117,30 +116,3 @@ def cli():
 
     action = agent.get_action(prompt)
     print(f"Agent: {action}\n")
-
-
-def run_test():
-    agent = HelplineAgent()
-    print("Helpline Agent")
-
-    goal = input("What do you want help with today: ")
-    agent.handle_user_prompt(goal)
-
-    action = agent.get_action(test_prompts.language_selection)
-    print("Test prompt action:", action)
-
-    action = agent.get_action(test_prompts.code_test)
-    print("Code test action:", action)
-
-    action = agent.get_action(test_prompts.main_menu)
-    print("Main menu action:", action)
-
-    action = agent.get_action(test_prompts.pfl_benefits_menu)
-    print("PFL benefits menu action:", action)
-
-    action = agent.get_action(test_prompts.operator_hello)
-    print("Operator hello response:", action)
-
-
-if __name__ == "__main__":
-    run_test()
