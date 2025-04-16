@@ -15,43 +15,8 @@ _TEMPERATURE = 0.3
 class HelplineAgent:
     def __init__(self):
         self.history = []  # Holds conversation context
-        self.system_instruction = textwrap.dedent("""\
-            # Overview
-            You are an automated phone system navigator. Your job is to listen to
-            phone prompts and respond with what a human would do next (e.g.,
-            'press 1', 'say "technical support"', etc.). Be concise and respond
-            with only the action you would take.
-
-            You should use the developer-described goal to determine how to answer each
-            phone prompt to achieve the goal. If you think you've made contact with a
-            human operator (as opposed to the automated help line system) please
-            respond "hand off to developer" in order to relinquish control to developer
-            to continue the conversation.
-
-            # Example
-            developer goal: I need to ask a question about my rental application.
-
-            user: Press 1 for billing, 2 for applications, 3 for service.
-
-            agent: press 1
-                                                  
-            user: Hello thank you for contacting the billing department, how may I help
-                  you?
-            
-            agent: handoff to developer
-                                                  
-            # General instructions:
-            - If asked, communicate with the system in English.
-            - The developer goal is never an emergency.
-            - We don't want to make the helpline mad. Over-escalating our requests might
-              upset them. That being said, we do need to be persistent to help the
-              developer                                   
-                                        
-
-            The following is the developer-described goal:
-
-            developer goal:
-        """)
+        with open("src/agent_prompt.txt", "r") as f:
+            self.system_instruction = f.read()
 
     def handle_user_prompt(self, user_prompt):
         self.system_instruction += user_prompt
@@ -72,19 +37,9 @@ class HelplineAgent:
             ]
             self.history += new_history
 
-            if dtfm_action := extract_dtmf(response.output_text):
-                return dtfm_action
-            else:
-                return response.output_text
+            return response.output_text
         except Exception as e:
             return f"[Error] {e}"
-
-
-def extract_dtmf(action):
-    dtmf_match = re.search(r"press (\d+)", action, re.IGNORECASE)
-    if dtmf_match:
-        return dtmf_match.group(1)
-    return None
 
 
 def run_cli():

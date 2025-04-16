@@ -56,7 +56,7 @@ class SpeakingDetector:
             self._model,
             sampling_rate=self._sample_rate,
             min_speech_duration_ms=20,
-            min_silence_duration_ms=300,
+            min_silence_duration_ms=20,
         )
 
     def __del__(self):
