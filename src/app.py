@@ -4,11 +4,14 @@ from flask import Flask, Response, request
 from twilio.twiml.voice_response import VoiceResponse
 from twilio.rest import Client
 
+import config
+
 _TWILIO_PHONE_NUMBER = "+18336411266"
 
 account_sid = os.environ["TWILIO_ACCOUNT_SID"]
 auth_token = os.environ["TWILIO_AUTH_TOKEN"]
 client = Client(account_sid, auth_token)
+
 
 
 app = Flask(__name__)
@@ -23,8 +26,8 @@ def voice():
         response.play("", digits="1")
         connect = response.connect()
         connect.stream(
-            url="wss://d541-73-162-172-228.ngrok-free.app",
-            status_callback="https://cd69-73-162-172-228.ngrok-free.app/stream_status",
+            url=config.AGENT_SERVER_URL,
+            status_callback=f"{config.APP_URL}/stream_status",
             status_callback_method="POST",
         )
         response.say("One moment please")
@@ -50,7 +53,7 @@ def send_dtmf():
     call_sid = request.json.get("call_sid")
     digits = request.json.get("digits")
     response.play("", digits=digits)
-    response.redirect("https://cd69-73-162-172-228.ngrok-free.app/voice", method="POST")
+    response.redirect(f"{config.APP_URL}/voice", method="POST")
     print(response)
     client.calls(call_sid).update(twiml=response)
     if not call_sid or not digits:
