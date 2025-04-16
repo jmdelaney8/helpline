@@ -1,9 +1,8 @@
-import textwrap
-import re
-
-import openai
 import os
 
+import openai
+
+import log
 
 # Load your OpenAI API key from environment variable
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -56,7 +55,7 @@ def run_cli():
             break
 
         action = agent.get_action(prompt)
-        print(f"Agent: {action}\n")
+        log.info(f"Agent: {action}\n")
 
 
 def cli():
@@ -70,4 +69,4 @@ def cli():
     )
 
     action = agent.get_action(prompt)
-    print(f"Agent: {action}\n")
+    log.info(f"Agent: {action}\n")

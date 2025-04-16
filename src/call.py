@@ -3,6 +3,7 @@ import os
 from twilio.rest import Client
 
 import config
+import log
 
 _TWILIO_PHONE_NUMBER = "+18336411266"
 _TARGET_NUMBER = "8772384373"  # "+13179184060"
@@ -19,5 +20,5 @@ def call():
         to=_TARGET_NUMBER,
         from_=_TWILIO_PHONE_NUMBER,
     )
-    print("Call SID:", call.sid)
+    log.info(f"Call SID: {call.sid}")
     return call.sid
