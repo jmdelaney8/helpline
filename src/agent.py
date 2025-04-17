@@ -24,8 +24,6 @@ class HelplineAgent:
     def get_action(self, prompt):
         self.history.append({"role": "user", "content": prompt})
 
-        log.info(f"agent history: {self.history}")
-
         try:
             response = openai.responses.create(
                 model=_MODEL,

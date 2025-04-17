@@ -99,7 +99,7 @@ def end_call():
     try:
         client.calls(call_sid).update(status="completed")
         log.info(f"Ended call {call_sid}")
-        return "OK", 200
+        return {"status": "ok"}, 200
     except Exception as e:
         log.error(f"Error ending call: {e}")
         return {"error": str(e)}, 500
