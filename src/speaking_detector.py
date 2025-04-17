@@ -1,6 +1,6 @@
 import os
 
-import utils
+import audio_utils
 
 import silero_vad
 
@@ -17,13 +17,13 @@ class SpeakingDetector:
         """Returns whether the the speaker in the audio chunk is still speaking or if
         the silence threshold has elapsed since the last utterance.
         """
-        utils.ulaw_to_wav_file(audio_chunk, self._sample_rate, _TMP_WAVE_FILENAME)
+        audio_utils.ulaw_to_wav_file(audio_chunk, self._sample_rate, _TMP_WAVE_FILENAME)
         silence_duration_ms = self._silence_duration_ms(_TMP_WAVE_FILENAME)
         return silence_duration_ms < self._silence_threshold_ms
     
     def contains_speech(self, audio_chunk):
         """Returns whether the audio chunk contains any utterances at all."""
-        utils.ulaw_to_wav_file(audio_chunk, self._sample_rate, _TMP_WAVE_FILENAME)
+        audio_utils.ulaw_to_wav_file(audio_chunk, self._sample_rate, _TMP_WAVE_FILENAME)
         wav = silero_vad.read_audio(_TMP_WAVE_FILENAME, self._sample_rate)
         speech_timestamps = self._speech_timestamps(wav)
         return any(speech_timestamps)
