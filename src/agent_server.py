@@ -31,6 +31,7 @@ sid = None
 _SAMPLE_RATE = 8000  # Hz
 _SILENCE_THRESHOLD = 3.0  # s
 
+interactions = []
 
 def send_dtmf_to_callee(call_sid, digits):
     url = "http://localhost:5050/send_dtmf"
@@ -74,7 +75,9 @@ def end_call(call_sid):
 
 def agent_action(transcript):
     """The agent acts upon the transcript."""
+    global interactions
     action = agent.get_action(transcript.strip())
+    interactions.append((transcript, action))
     log.info(f"Agent response: {action}")
 
     if digit := extract_dtmf(action):
@@ -86,9 +89,16 @@ def agent_action(transcript):
         send_handoff(sid)
     if "report" in action.lower():
         log.info(f"Reporting to user: {action}")
+        report_interactions()
         end_call(sid)
 
-
+def report_interactions():
+    """Prints the interactions"""
+    global interactions
+    print("interactions:")
+    for input_, action in interactions:
+        print(f"  {input_}")
+        print(f"    {action}\n")
 
 def transcribe_audio_thread(buffer, queue, stream_id=None):
     """Threaded function to process and transcribe audio chunks."""

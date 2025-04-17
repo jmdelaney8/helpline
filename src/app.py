@@ -16,8 +16,6 @@ client = Client(account_sid, auth_token)
 
 app = Flask(__name__)
 
-hit_count = 0
-
 
 @app.route("/voice", methods=["POST"])
 def voice():
@@ -26,12 +24,6 @@ def voice():
     try:
         log.info("Voice endpoint hit")
         response = VoiceResponse()
-
-        # TODO: REMOVE! Breaking everything. Figure out why we fail at the initial
-        # language selection
-        if hit_count < 1:
-            response.play("", digits="1")
-        hit_count += 1
 
         connect = response.connect()
         connect.stream(
@@ -111,6 +103,7 @@ def end_call():
     except Exception as e:
         log.error(f"Error ending call: {e}")
         return {"error": str(e)}, 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5050, debug=True)
