@@ -13,6 +13,9 @@ import uuid
 
 import openai
 import websockets
+import fastapi
+import pydantic
+import uvicorn
 
 import agent as agent_module
 import call as call_module
@@ -21,6 +24,7 @@ import speaking_detector as speaking_detector_module
 import audio_utils
 import call_actions
 
+
 # Load OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -28,49 +32,43 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 _SAMPLE_RATE = 8000  # Hz
 _SILENCE_THRESHOLD = 3.0  # s
 
-
-def extract_dtmf(action):
-    # Match 'press ' or 'enter ' followed by contiguous digits
-    dtmf_match = re.search(r"(?:press|enter) (\d+)", action, re.IGNORECASE)
-    if dtmf_match:
-        return dtmf_match.group(1)
-    return None
+app = fastapi.FastAPI()
+agent_wrapper = None
 
 
-class AgentServer:
-    def __init__(self, user_request):
-        self.agent = agent_module.HelplineAgent()
-        self.agent.handle_user_prompt(user_request)
+class AgentRequest(pydantic.BaseModel):
+    phone: str
+    request: str
+
+
+@app.post("/agent")
+async def agent_endpoint(data: AgentRequest):
+    global agent_wrapper
+    log.info(f"Agent endpoint hit, {data=}")
+    agent_wrapper = AgentWrapper(data.phone, data.request)
+    agent_wrapper.call()
+
+
+@app.websocket("/ws/media")
+async def websocket_media_endpoint(websocket: fastapi.WebSocket):
+    await websocket.accept()
+
+    try:
+        await agent_wrapper.handle_media(websocket)
+    except fastapi.WebSocketDisconnect:
+        log.info("WebSocket disconnected")
+    except Exception as e:
+        log.error(f"WebSokcet error: {e}")
+
+
+class AgentWrapper:
+    def __init__(self, phone_number, user_request):
+        self.agent = agent_module.HelplineAgent(user_request)
         self.sid = None
-        self.call_end = False
-
-        self.interactions = []
-
-    def agent_action(self, transcript):
-        """The agent acts upon the transcript."""
-        action = self.agent.get_action(transcript.strip())
-        self.interactions.append((transcript, action))
-        log.info(f"Agent response: {action}")
-
-        if digit := extract_dtmf(action):
-            log.info(f"Sending dtmf {digit}")
-            call_actions.send_dtmf_to_callee(self.sid, digit)
-        if "handoff" in action.lower():
-            # Trigger handoff endpoint
-            log.info("Handing off to user")
-            call_actions.send_handoff(self.sid)
-        if "report" in action.lower():
-            log.info(f"Reporting to user: {action}")
-            self.report_interactions()
-            call_actions.send_end_call(self.sid)
-            self.call_end = True
-
-    def report_interactions(self):
-        """Prints the interactions"""
-        print("interactions:\n")
-        for input_, action in self.interactions:
-            print(f"  {input_}")
-            print(f"    {action}\n")
+        self.phone_number = phone_number
+    
+    def call(self):
+        self.sid = call_module.call(self.phone_number)
 
     def transcribe_audio_thread(self, buffer, queue, stream_id=None):
         """Threaded function to process and transcribe audio chunks."""
@@ -88,7 +86,14 @@ class AgentServer:
                     )
                 log.info(f"[{stream_id}] [{thread_name}] Transcript: {transcript.text}")
 
-            self.agent_action(transcript.text)
+            action, arg = self.agent.get_action(transcript.text)
+
+            if action == "send_dtfm":
+                call_actions.send_dtmf_to_callee(self.sid, arg)
+            elif action == "handoff":
+                call_actions.send_handoff(self.sid)
+            elif action == "end_call":
+                call_actions.send_end_call(self.sid)
 
         except Exception as e:
             log.error(
@@ -130,7 +135,7 @@ class AgentServer:
         try:
             while True:
                 try:
-                    message = await asyncio.wait_for(websocket.recv(), timeout=3)
+                    message = await asyncio.wait_for(websocket.receive_text(), timeout=3)
                     data = json.loads(message)
                     if not data.get("event") == "media":
                         continue
@@ -170,7 +175,9 @@ class AgentServer:
             if full_call_audio:
                 ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                 wav_filename = f"full_audio/call_recording_{ts}.wav"
-                audio_utils.ulaw_to_wav_file(full_call_audio, _SAMPLE_RATE, wav_filename)
+                audio_utils.ulaw_to_wav_file(
+                    full_call_audio, _SAMPLE_RATE, wav_filename
+                )
                 log.info(f"[{stream_id}] Full call audio saved to {wav_filename}")
 
     async def handle_media(self, websocket):
@@ -194,36 +201,6 @@ class AgentServer:
             log.info(f"[{stream_id}] No more messages, closing")
             transcription_task.cancel()
 
-    async def serve(self):
-        server = await websockets.serve(
-            self.handle_media,
-            "0.0.0.0",
-            8765,
-            close_timeout=10,
-            ping_interval=20,
-            ping_timeout=20,
-        )
-        log.info("WebSocket server running on ws://0.0.0.0:8765")
-
-        await server.serve_forever()
-
-    async def run(self):
-        serve_task = asyncio.create_task(self.serve())
-
-        try:
-            self.sid = call_module.call()
-
-            while not self.call_end:
-                await asyncio.sleep(1)
-
-        finally:
-            serve_task.cancel()
-
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("prompt")
-    args = parser.parse_args()
-
-    agent_server = AgentServer(args.prompt)
-    asyncio.run(agent_server.run())
+    uvicorn.run("agent_server:app", host="0.0.0.0", port=8765)

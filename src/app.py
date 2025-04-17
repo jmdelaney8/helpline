@@ -3,6 +3,7 @@ import os
 from flask import Flask, Response, request
 from twilio.rest import Client
 from twilio.twiml.voice_response import VoiceResponse
+import requests
 
 import config
 import log
@@ -17,6 +18,46 @@ client = Client(account_sid, auth_token)
 app = Flask(__name__)
 
 
+@app.route("/", methods=["GET"])
+def index():
+    """Serve a simple web UI for submitting a phone number and request."""
+    return '''
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Helpline Request</title>
+    </head>
+    <body>
+        <h2>Helpline Request</h2>
+        <form action="/submit_request" method="post">
+            <label for="phone">Phone Number:</label><br>
+            <input type="text" id="phone" name="phone" required><br><br>
+            <label for="request">Request:</label><br>
+            <textarea id="request" name="request" rows="5" cols="40" required></textarea><br><br>
+            <input type="submit" value="Submit">
+        </form>
+    </body>
+    </html>
+    '''
+
+@app.route("/submit_request", methods=["POST"])
+def submit_request():
+    """Handle the submitted web form."""
+    phone = request.form.get("phone")
+    req = request.form.get("request")
+    # Send request to FastAPI agent endpoint
+    agent_api_url = "http://localhost:8765/agent"
+    try:
+        resp = requests.post(agent_api_url, json={"phone": phone, "request": req})
+        if resp.status_code == 200:
+            return f"Running request for {phone}: {req}", 200
+        else:
+            return f"Failed to start agent: {resp.text}", 500
+    except Exception as e:
+        return f"Error contacting agent server: {e}", 500
+
+
 @app.route("/voice", methods=["POST"])
 def voice():
     """Respond to Twilio with instructions to start bidirectional media streaming."""
@@ -27,7 +68,7 @@ def voice():
 
         connect = response.connect()
         connect.stream(
-            url=config.AGENT_SERVER_URL,
+            url=f"{config.AGENT_SERVER_URL}/ws/media",
             status_callback=f"{config.APP_URL}/stream_status",
             status_callback_method="POST",
         )

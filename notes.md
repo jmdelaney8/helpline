@@ -1,11 +1,13 @@
 # Progress
 
-- Really almost working!
+- Trying to make a basic web app
 
 # Todo
-- Have the agent summarize the call log at the end 
-- properly hang up the call
-- make the agent server a proper server where new sessions get a new agent
+- make sure it all works
+- send final result back to web app
+- then send incremental updates
+- clean up terminal output while we are at it
+- something is broken about the language trnascription, spams the spanish portion
 
 
 # Next

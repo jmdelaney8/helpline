@@ -14,10 +14,10 @@ auth_token = os.environ["TWILIO_AUTH_TOKEN"]
 client = Client(account_sid, auth_token)
 
 
-def call():
+def call(phone_number=None):
     call = client.calls.create(
-        url=f"{config.APP_URL}/voice",  # Replace with your server's public URL
-        to=_TARGET_NUMBER,
+        url=f"{config.APP_URL}/voice",
+        to=phone_number if phone_number else _TARGET_NUMBER,
         from_=_TWILIO_PHONE_NUMBER,
     )
     log.info(f"Call SID: {call.sid}")

@@ -1,4 +1,5 @@
 import os
+import re
 
 import openai
 
@@ -12,16 +13,16 @@ _TEMPERATURE = 0.3
 
 
 class HelplineAgent:
-    def __init__(self):
+    def __init__(self, user_prompt):
         self.history = []  # Holds conversation context
         with open("src/agent_prompt.txt", "r") as f:
             self.system_instruction = f.read()
-
-    def handle_user_prompt(self, user_prompt):
         self.system_instruction += user_prompt
         self.history = [{"role": "developer", "content": self.system_instruction}]
 
-    def get_action(self, prompt):
+        self.interactions = []
+
+    def respond(self, prompt):
         self.history.append({"role": "user", "content": prompt})
 
         try:
@@ -36,37 +37,41 @@ class HelplineAgent:
             ]
             self.history += new_history
 
+            self.interactions.append((prompt, response.output_text))
+
             return response.output_text
         except Exception as e:
             return f"[Error] {e}"
 
+    def get_action(self, transcript):
+        """Returns an action for the given transcript."""
+        response = self.respond(transcript)
+        log.info(f"Agent response: {response}")
 
-def run_cli():
-    agent = HelplineAgent()
-    print("Helpline Agent")
+        if digit := extract_dtmf(response):
+            return "send_dtfm", digit
+        if "handoff" in response.lower():
+            # Trigger handoff endpoint
+            return "handoff", None
+        if "report" in response.lower():
+            log.info(f"Reporting to user: {response}")
+            self.report_interactions()
+            return "end_call", None
+            self.call_end = True
+        else:
+            return None, None
 
-    goal = input("What do you want help with today: ")
-    agent.handle_user_prompt(goal)
-
-    print("Enter simulated phone prompts. Type 'exit' to quit.\n")
-    while True:
-        prompt = input("Phone prompt > ").strip()
-        if prompt.lower() in {"exit", "quit"}:
-            break
-
-        action = agent.get_action(prompt)
-        log.info(f"Agent: {action}\n")
+    def report_interactions(self):
+        """Prints the interactions"""
+        print("interactions:\n")
+        for input_, action in self.interactions:
+            print(f"  {input_}")
+            print(f"    {action}\n")
 
 
-def cli():
-    agent = HelplineAgent()
-
-    agent.handle_user_prompt("I need to reset my password")
-
-    prompt = (
-        "Press 1 for registration, press 2 for billing, press 3 for account management,"
-        " press 4 for utility service requests"
-    )
-
-    action = agent.get_action(prompt)
-    log.info(f"Agent: {action}\n")
+def extract_dtmf(response):
+    # Match 'press ' or 'enter ' followed by contiguous digits
+    dtmf_match = re.search(r"(?:press|enter) (\d+)", response, re.IGNORECASE)
+    if dtmf_match:
+        return dtmf_match.group(1)
+    return None
